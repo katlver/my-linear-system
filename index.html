@@ -157,6 +157,13 @@
         <h3>Enter your equations</h3>
         <p id="inputHelp">Use x and y. Fractions, decimals, and negative values are all fine.</p>
       </div>
+      <fieldset class="notation-picker">
+        <legend>Variable notation</legend>
+        <div class="notation-options" id="notationOptions">
+          <button class="notation-option active" data-notation="standard" type="button">Standard <span>x, y, z</span></button>
+          <button class="notation-option" data-notation="lesson" type="button">Lesson style <span>x1, x2, x3</span></button>
+        </div>
+      </fieldset>
       <div class="eqs" id="inputs"></div>
       <div class="general-err" id="generalErr"></div>
 
@@ -164,7 +171,7 @@
         <button class="btn btn-primary" id="solveBtn" type="button">Solve the system</button>
         <button class="btn btn-secondary" id="clearBtn" type="button">Clear</button>
       </div>
-      <p class="help-line">Example format: <code>2x + 3y = 7</code></p>
+      <p class="help-line" id="formatHelp">Example format: <code>2x + 3y = 7</code></p>
     </div>
 
     <aside class="card reveal-on-scroll" style="transition-delay:.08s">
@@ -177,6 +184,19 @@
       <p class="intro-text">Load a ready-made system to see the solver in action.</p>
       <div class="examples" id="examples"></div>
     </aside>
+  </section>
+
+  <section class="lesson-card card reveal-on-scroll" aria-labelledby="lessonTitle">
+    <div class="card-head">
+      <div><span class="step-tag">Lesson guide</span><h2 id="lessonTitle">Systems of linear equations</h2></div>
+    </div>
+    <p>A linear equation can use two or three variables. A solution is a set of values that makes every equation true at the same time.</p>
+    <div class="lesson-grid">
+      <div><b>One solution</b><span>Consistent &middot; independent</span><small>The lines meet once.</small></div>
+      <div><b>Infinitely many</b><span>Consistent &middot; dependent</span><small>Both equations describe the same line.</small></div>
+      <div><b>No solution</b><span>Inconsistent</span><small>The lines are parallel or contradict.</small></div>
+    </div>
+    <p class="lesson-example">Lesson-style input: <code>2x1 + 4x2 + 5x3 = 15</code></p>
   </section>
 
   <section class="results" id="results">
