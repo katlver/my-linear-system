@@ -18,7 +18,41 @@
   setTimeout(enter, 4200);
 })();
 
-let count = 2, equations = ["", ""], last = null;
+let count = 2, equations = ["", ""], last = null, notation = "standard";
+
+function variableNames(n=count){ return notation === "lesson" ? ["x1","x2","x3"].slice(0,n) : ["x","y","z"].slice(0,n); }
+function mathVar(name){
+  const match = /^x([123])$/.exec(name);
+  return match ? `<span class="math-var">x<sub>${match[1]}</sub></span>` : `<span class="math-var">${name}</span>`;
+}
+function displayVariableNames(n=count){ return variableNames(n).map(mathVar); }
+function formatLessonSymbols(root){
+  if(notation !== "lesson") return;
+  const indices = {x:"1", y:"2", z:"3"};
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(node){
+      return node.parentElement?.closest(".math-var") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  const nodes = [];
+  while(walker.nextNode()) if(/(?<![A-Za-z])[xyz](?![A-Za-z])/g.test(walker.currentNode.nodeValue)) nodes.push(walker.currentNode);
+  nodes.forEach(node=>{
+    const fragment = document.createDocumentFragment();
+    const pieces = node.nodeValue.split(/((?<![A-Za-z])[xyz](?![A-Za-z]))/g);
+    pieces.forEach(piece=>{
+      if(indices[piece]){
+        const symbol = document.createElement("span");
+        symbol.className = "math-var";
+        symbol.innerHTML = `x<sub>${indices[piece]}</sub>`;
+        fragment.appendChild(symbol);
+      } else fragment.appendChild(document.createTextNode(piece));
+    });
+    node.replaceWith(fragment);
+  });
+}
+function toLessonNotation(s){ return s.replace(/x/g,"x1").replace(/y/g,"x2").replace(/z/g,"x3"); }
+function toStandardNotation(s){ return s.replace(/x1(?!\d)/gi,"x").replace(/x2(?!\d)/gi,"y").replace(/x3(?!\d)/gi,"z"); }
+function normalizeNotation(s){ return toStandardNotation(s).toLowerCase(); }
 
 const examples = [
   ["Two-variable basics", 2, ["2x + 3y = 13", "x - y = 1"], "A clean integer example."],
@@ -86,6 +120,7 @@ function parseSide(s){
   return {c,b}
 }
 function parse(s){
+  s=normalizeNotation(s);
   if((s.match(/=/g)||[]).length!==1)throw Error("Each equation needs exactly one '='.");
   let [l,r]=s.split("=");
   let a=parseSide(l),b=parseSide(r);
@@ -112,24 +147,28 @@ function matrixSolve(rows,n){
   return {type:"unique",x}
 }
 function eqText(e,n=2){
-  let vs=["x","y","z"].slice(0,n),out="";
+  let vs=variableNames(n),out="";
   vs.forEach((v,i)=>{
     let c=e.c[i];if(zero(c))return;
     let negative=val(c)<0,m=negative?neg(c):c,coef=str(m)==="1"?"":fracHTML(m);
-    out+=(out?(negative?" - ":" + "):(negative?"-":""))+coef+v
+    out+=(out?(negative?" - ":" + "):(negative?"-":""))+coef+mathVar(v)
   });
   return (out||"0")+" = "+fracHTML(e.b)
 }
 
 /* ---- rendering ---- */
 function renderInputs(){
-  document.getElementById("inputHelp").textContent = `Use x and y${count===3?", z":""}. Fractions, decimals, and negative values are all fine.`;
+  const vs = variableNames();
+  document.getElementById("inputHelp").textContent = `Use ${vs.join(", ")}. Fractions, decimals, and negative values are all fine.`;
+  document.getElementById("formatHelp").innerHTML = notation === "lesson"
+    ? "Example format: <code>2x1 + 3x2 = 7</code>"
+    : "Example format: <code>2x + 3y = 7</code>";
   document.getElementById("inputs").innerHTML = equations.map((e,i)=>`
     <div class="field" style="animation-delay:${i*0.07}s">
       <label for="in${i}">Equation ${i+1}</label>
       <div class="rule-shell" id="shell${i}">
         <span class="rule-num">${i+1}</span>
-        <input id="in${i}" value="${e.replaceAll('"',"&quot;")}" placeholder="${i?"x - y = 4":"2x + 3y = 7"}">
+        <input id="in${i}" value="${e.replaceAll('"',"&quot;")}" placeholder="${notation === "lesson" ? (i?"x1 - x2 = 4":"2x1 + 3x2 = 7") : (i?"x - y = 4":"2x + 3y = 7")}">
       </div>
       <span class="err-msg" id="err${i}" style="display:none"></span>
     </div>`).join("");
@@ -144,12 +183,12 @@ function renderExamples(){
       <button class="example-card" data-ex="${idx}" type="button">
         <span class="ex-top"><span class="ex-title">${e[0]}</span></span>
         <span class="ex-desc">${e[3]}</span>
-        <span class="ex-eq">${e[2].join(" &middot; ")}</span>
+        <span class="ex-eq">${e[2].map(q=>notation === "lesson" ? toLessonNotation(q) : q).join(" &middot; ")}</span>
         <svg class="ex-arrow" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2 7h9M7 3l4 4-4 4" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>`).join("");
   document.querySelectorAll(".example-card").forEach(b=>b.onclick=()=>{
     let e = examples[+b.dataset.ex];
-    count = e[1]; equations = [...e[2]];
+    count = e[1]; equations = e[2].map(q=>notation === "lesson" ? toLessonNotation(q) : q);
     setMode(); renderInputs();
     document.getElementById("inputs").scrollIntoView({behavior:"smooth", block:"center"});
   });
@@ -217,15 +256,16 @@ function solve(){
 }
 
 function showResult(rows, s){
-  let box = document.getElementById("solution"), v = ["x","y","z"].slice(0,count);
+  let box = document.getElementById("solution"), v = displayVariableNames();
   if(s.type==="unique"){
-    let mathText = v.map((x,i)=>x+" = "+fracHTML(s.x[i])).join("&emsp;");
+    let mathText = v.map((x,i)=>`<span class="answer-chip">${x} = ${fracHTML(s.x[i])}</span>`).join("");
     box.innerHTML = `<div class="solution-box">
       <div class="sol-icon" id="solIcon">&check;</div>
       <div>
-        <span class="sol-tag">Unique solution</span>
+        <span class="sol-tag">Consistent &middot; independent</span>
         <h3>Here's your answer</h3>
-        <div class="circle-answer">
+        <div class="circle-answer solution-orbit">
+          <span class="orbit-mark mark-one">+</span><span class="orbit-mark mark-two">&times;</span><span class="orbit-mark mark-three">=</span>
           <div class="math-line">${mathText}</div>
           <svg class="circle-svg" viewBox="0 0 280 110"><path class="circle-path" d="M6 55 C 6 14, 274 14, 274 55 C 274 96, 6 96, 6 55" /></svg>
         </div>
@@ -239,7 +279,7 @@ function showResult(rows, s){
   } else if(s.type==="none"){
     box.innerHTML = `<div class="solution-box warn">
       <div class="sol-icon">&times;</div>
-      <div><span class="sol-tag">Result</span><h3>No solution</h3>
+      <div><span class="sol-tag">Inconsistent system</span><h3>No solution</h3>
       <p>These equations contradict each other. They can't all be true at once.</p></div></div>`;
     renderSteps(rows, s);
     renderGraph(rows, s);
@@ -248,7 +288,7 @@ function showResult(rows, s){
   } else {
     box.innerHTML = `<div class="solution-box info">
       <div class="sol-icon">&infin;</div>
-      <div><span class="sol-tag">Result</span><h3>Infinitely many solutions</h3>
+      <div><span class="sol-tag">Consistent &middot; dependent</span><h3>Infinitely many solutions</h3>
       <p>These equations depend on each other, so they don't pin down one single point.</p></div></div>`;
     renderSteps(rows, s);
     renderGraph(rows, s);
@@ -384,6 +424,7 @@ function renderSteps(rows, s){
       <div class="step-num">${i+1}</div>
       <div>${body}</div>
     </div>`).join("");
+  formatLessonSymbols(document.getElementById("steps"));
 
   document.getElementById("methodNoteTitle").textContent = "Method: " + methodName(chosen).toLowerCase();
   const notes = {
@@ -396,13 +437,13 @@ function renderSteps(rows, s){
 }
 
 function subText(r, s, n){
-  let vs = ["x","y","z"].slice(0,n), out = "";
+  let vs = variableNames(n), out = "";
   vs.forEach((v,j)=>{
     let c = r.c[j];
     if(zero(c)) return;
     let negative = val(c)<0, m = negative?neg(c):c;
     let coefStr = str(m)==="1" ? "" : fracHTML(m);
-    let term = coefStr + "(" + fracHTML(s.x[j]) + ")";
+    let term = coefStr + mathVar(v) + "(" + fracHTML(s.x[j]) + ")";
     out += (out ? (negative?" - ":" + ") : (negative?"-":"")) + term;
   });
   return out || "0";
@@ -413,7 +454,7 @@ function renderVerification(rows, s){
     document.getElementById("verifySolution").innerHTML = "";
     return;
   }
-  let vs = ["x","y","z"].slice(0,count);
+  let vs = displayVariableNames();
   document.getElementById("verifySolution").innerHTML = `
     <div class="verify-solution">
       <span class="verify-solution-label">Solution used below:</span>
@@ -460,12 +501,20 @@ function renderGraph(rows, s){
   const scale = (cx - pad) / range;
   const toX = mx => cx + mx*scale;
   const toY = my => cy - my*scale;
+  const tickStep = range <= 10 ? 1 : range <= 20 ? 2 : 5;
+  let gridSvg = "", tickSvg = "";
+  for(let tick=-range; tick<=range; tick+=tickStep){
+    if(tick===0) continue;
+    const x = toX(tick), y = toY(tick);
+    gridSvg += `<line class="graph-grid" x1="${x}" y1="${pad}" x2="${x}" y2="${size-pad}"/><line class="graph-grid" x1="${pad}" y1="${y}" x2="${size-pad}" y2="${y}"/>`;
+    tickSvg += `<text class="graph-tick" x="${x}" y="${cy+13}" text-anchor="middle">${tick}</text><text class="graph-tick" x="${cx+6}" y="${y+4}" text-anchor="start">${tick}</text>`;
+  }
 
   const colors = ["#2F5D42", "#B87F22"];
   const reach = range * 1.4;
   let linesSvg = rows.map((r,i)=>{
     const [[x1,y1],[x2,y2]] = lineEndpoints(r, reach);
-    return `<line class="graph-line ${i===0?"a":"b"}" x1="${toX(x1).toFixed(1)}" y1="${toY(y1).toFixed(1)}" x2="${toX(x2).toFixed(1)}" y2="${toY(y2).toFixed(1)}" stroke="${colors[i]}" stroke-width="2.6"/>`;
+    return `<line class="graph-line ${i===0?"a":"b"}" pathLength="1" x1="${toX(x1).toFixed(1)}" y1="${toY(y1).toFixed(1)}" x2="${toX(x2).toFixed(1)}" y2="${toY(y2).toFixed(1)}" stroke="${colors[i]}" stroke-width="2.6"/>`;
   }).join("");
 
   let pointSvg = "";
@@ -479,8 +528,11 @@ function renderGraph(rows, s){
   }
 
   const svg = `<svg viewBox="0 0 ${size} ${size}" role="img" aria-label="Graph of the two lines">
+    ${gridSvg}
     <line class="graph-axis" x1="${pad}" y1="${cy}" x2="${size-pad}" y2="${cy}"/>
     <line class="graph-axis" x1="${cx}" y1="${pad}" x2="${cx}" y2="${size-pad}"/>
+    <text class="graph-tick graph-zero" x="${cx+6}" y="${cy+13}">0</text>
+    ${tickSvg}
     ${linesSvg}
     ${pointSvg}
   </svg>`;
@@ -489,7 +541,8 @@ function renderGraph(rows, s){
 
   let note;
   if(s.type==="unique"){
-    note = `The lines cross at exactly one point &mdash; <b>x = ${str(s.x[0])}, y = ${str(s.x[1])}</b>. That crossing is the only pair that satisfies both equations at once.`;
+    const vs = displayVariableNames(2);
+    note = `The lines cross at exactly one point &mdash; <b>${vs[0]} = ${str(s.x[0])}, ${vs[1]} = ${str(s.x[1])}</b>. That crossing is the only pair that satisfies both equations at once.`;
   } else if(s.type==="none"){
     note = `The lines run <b>parallel</b> and never touch, which is the geometric picture of "no solution."`;
   } else {
@@ -605,13 +658,23 @@ function animateCount(el, target){
 /* ---- wiring ---- */
 document.getElementById("twoBtn").onclick = ()=>{count=2; equations=["",""]; setMode(); renderInputs(); reset()};
 document.getElementById("threeBtn").onclick = ()=>{count=3; equations=["","",""]; setMode(); renderInputs(); reset()};
+document.querySelectorAll(".notation-option").forEach(button=>button.onclick=()=>{
+  const next = button.dataset.notation;
+  if(next === notation) return;
+  equations = equations.map(q=>next === "lesson" ? toLessonNotation(q) : toStandardNotation(q));
+  notation = next;
+  document.querySelectorAll(".notation-option").forEach(b=>b.classList.toggle("active", b.dataset.notation === notation));
+  renderInputs();
+  renderExamples();
+  last = null;
+});
 document.getElementById("solveBtn").onclick = solve;
 document.getElementById("clearBtn").onclick = reset;
 document.getElementById("resetBtn").onclick = reset;
 document.getElementById("copyBtn").onclick = async ()=>{
   if(!last) return;
   let t = last.s.type==="unique"
-    ? last.s.x.map((x,i)=>`${["x","y","z"][i]} = ${str(x)}`).join("\n")
+    ? last.s.x.map((x,i)=>`${variableNames()[i]} = ${str(x)}`).join("\n")
     : last.s.type==="none" ? "No solution." : "Infinitely many solutions.";
   try{
     await navigator.clipboard.writeText(t);
