@@ -20,7 +20,7 @@
  */
 
 /*
- * SECTION 1: Intro / splash screen
+ * Intro / splash screen
  * Just a little animated cover page before the actual app shows up.
  * Clicking "enter", clicking "skip", or waiting long enough all do the same thing.
  */
@@ -44,7 +44,7 @@
 })();
 
 /*
- * SECTION 2: App state
+ * App state
  * count      -> how many variables/equations we're working with (2 or 3)
  * equations  -> the raw text the user typed for each equation
  * last       -> the most recent solved system, kept around so "Copy solution" and
@@ -161,7 +161,7 @@ const examples = [
 ];
 
 /*
- * SECTION 3: Fraction math
+ * Fraction math
  * I didn't want the app rounding things to decimals and losing precision,
  * so every number in this project is stored as a fraction {n: numerator, d: denominator}
  * instead of a regular JS number. frac() below always builds one in lowest terms.
@@ -223,7 +223,7 @@ function fracHTML(a) {
 }
 
 /*
- * SECTION 4: Turning what the user typed into math
+ * Turning what the user typed into math
  * The user just types plain text like "2x + 3y = 7", so this part is the little
  * hand-rolled parser that reads that text and turns it into coefficients we can
  * actually run the linear-algebra on. Nothing fancy, just splitting on +/- signs.
@@ -344,7 +344,7 @@ function matrixSolve(rows, n) {
 }
 
 /*
- * SECTION 5: Handling the "infinitely many solutions" case
+ * Handling the "infinitely many solutions" case
  * When a system is dependent, one or more variables are "free" (they can be
  * anything). These helpers plug in a value for the free variable(s) and figure
  * out what the rest of the variables come out to, so we can show the user a
@@ -419,7 +419,7 @@ function eqText(e, n = 2) {
 }
 
 /*
- * SECTION 6: Putting things on the page
+ * Putting things on the page
  * From here down it's mostly DOM stuff — building the equation input boxes,
  * the example cards, and (further down) the results once the user hits solve.
  */
@@ -623,7 +623,7 @@ function showResult(rows, s) {
 }
 
 /*
- * SECTION 6.5: History of solved systems
+ * History of solved systems
  * Every time "Solve the system" produces a real answer, we tuck a record of it
  * away here: the equations exactly as entered, which method and notation were
  * in play, and the result. It's persisted to localStorage so it survives a
@@ -748,7 +748,7 @@ function methodName(m) {
 }
 
 /*
- * SECTION 7: Showing the actual algebra steps
+ * Showing the actual algebra steps
  * This is the longest part of the file. renderSteps() below writes out the
  * "how we got here" explanation the user sees, and it changes depending on
  * which method is picked (substitution / elimination / cross-multiplication /
@@ -1021,7 +1021,7 @@ function renderVerification(rows, s) {
 }
 
 /*
- * SECTION 8: The little graph
+ * The little graph
  * Only makes sense for 2 variables (can't easily draw a 3D plane in an SVG),
  * so this whole section gets skipped when count === 3. Just plain coordinate
  * geometry: pick two far-apart points on each line and draw a segment through them.
@@ -1175,7 +1175,7 @@ function animateCount(el, target) {
 }
 
 /*
- * SECTION 9: Page polish (animations, scroll effects, dropdown widget, event wiring)
+ * Page polish (animations, scroll effects, dropdown widget, event wiring)
  * None of this touches the math — it's just the little extras that make the
  * page feel nicer to use.
  */
@@ -1262,7 +1262,7 @@ function animateCount(el, target) {
 })();
 
 /*
- * SECTION 10: Hooking everything up to the buttons
+ * Hooking everything up to the buttons
  * Everything above this point is just functions sitting there — this is
  * where they actually get attached to clicks and page load.
  */
